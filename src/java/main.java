@@ -3,7 +3,7 @@
  */
 public class main {
     public static void main(String[] args) {
-        weka.gui.GUIChooser gui = new weka.gui.GUIChooser();
-        gui.main(args);
+        WekaAccessor wa = new WekaAccessor();
+        wa.loadData("C:\\Users\\user\\Desktop\\weka-3-6-13\\data\\weather.nominal.arff");
     }
 }

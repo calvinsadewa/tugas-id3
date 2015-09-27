@@ -20,6 +20,8 @@ import java.util.Enumeration;
  * Modificated weka's ID3
  * the stop condition on building tree is when no more attribute can be split
  * rather than when max info gain of all attribute is zero
+ * Also can classify instance that missing attribute by checking the distribution
+ * of the best match tree,
  */
 public class myId3
         extends Classifier
@@ -117,39 +119,50 @@ public class myId3
 
         ArrayList<Attribute> attributes = new ArrayList<Attribute>();
         for (int i = 0; i < data.numAttributes(); i++) {
-            attributes.add(data.attribute(i));
+            if (i != data.classIndex()) attributes.add(data.attribute(i));
         }
-        makeTree(data,attributes);
+        makeTree(data,attributes,Instance.missingValue(),data.classAttribute());
     }
 
     /**
      * Method for building an Id3 tree.
      *
      * @param data the training data
+     * @param attributes the list of attribute that can be selected to make tree
+     * @param parentClassValue the parent class value
+     * @param classAttribute the attribute to be classified
      * @exception Exception if decision tree can't be built successfully
      */
-    private void makeTree(Instances data, ArrayList<Attribute> attributes) throws Exception {
+    private void makeTree(Instances data, ArrayList<Attribute> attributes,
+                          double parentClassValue, Attribute classAttribute) throws Exception {
+
+        m_ClassAttribute = classAttribute;
 
         // Check if no instances have reached this node.
         if (data.numInstances() == 0) {
             m_Attribute = null;
-            m_ClassValue = Instance.missingValue();
+            m_ClassValue = parentClassValue;
             m_Distribution = new double[data.numClasses()];
             return;
         }
 
-        if (attributes.size() == 0) {
-            m_Attribute = null;
-            m_Distribution = new double[data.numClasses()];
-            Enumeration instEnum = data.enumerateInstances();
-            while (instEnum.hasMoreElements()) {
-                Instance inst = (Instance) instEnum.nextElement();
-                m_Distribution[(int) inst.classValue()]++;
-            }
-            Utils.normalize(m_Distribution);
-            m_ClassValue = Utils.maxIndex(m_Distribution);
-            m_ClassAttribute = data.classAttribute();
+        m_Distribution = new double[data.numClasses()];
+        Enumeration instEnum = data.enumerateInstances();
+        while (instEnum.hasMoreElements()) {
+            Instance inst = (Instance) instEnum.nextElement();
+            m_Distribution[(int) inst.classValue()]++;
         }
+        m_ClassValue = Utils.maxIndex(m_Distribution);
+
+        // if data is "pure" (entrophy equal 0) or no attribute left
+        if (m_Distribution[Utils.maxIndex(m_Distribution)] == data.numInstances()
+                || attributes.size() == 0 ){
+            Utils.normalize(m_Distribution);
+            m_Attribute = null;
+            return;
+        };
+
+        Utils.normalize(m_Distribution);
 
         // Compute attribute with maximum information gain.
         double[] infoGains = new double[attributes.size()];
@@ -166,7 +179,7 @@ public class myId3
         newAttributes.remove(m_Attribute);
         for (int j = 0; j < m_Attribute.numValues(); j++) {
             m_Successors[j] = new myId3();
-            m_Successors[j].makeTree(splitData[j],newAttributes);
+            m_Successors[j].makeTree(splitData[j],newAttributes, m_ClassValue,classAttribute);
         }
     }
 
@@ -180,11 +193,12 @@ public class myId3
     public double classifyInstance(Instance instance)
             throws NoSupportForMissingValuesException {
 
-        if (instance.hasMissingValue()) {
-            throw new NoSupportForMissingValuesException("Id3: no missing values, "
-                    + "please.");
-        }
+        //if leaf
         if (m_Attribute == null) {
+            return m_ClassValue;
+        }
+        else if (instance.isMissing(m_Attribute)) {
+            //if missing attribute supossed to used
             return m_ClassValue;
         } else {
             return m_Successors[(int) instance.value(m_Attribute)].
@@ -202,11 +216,10 @@ public class myId3
     public double[] distributionForInstance(Instance instance)
             throws NoSupportForMissingValuesException {
 
-        if (instance.hasMissingValue()) {
-            throw new NoSupportForMissingValuesException("Id3: no missing values, "
-                    + "please.");
-        }
         if (m_Attribute == null) {
+            return m_Distribution;
+        } else if (instance.isMissing(m_Attribute)) {
+            //if missing attribute supossed to used
             return m_Distribution;
         } else {
             return m_Successors[(int) instance.value(m_Attribute)].

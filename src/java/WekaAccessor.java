@@ -2,9 +2,11 @@ import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.trees.ADTree;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.SerializationHelper;
 import weka.core.converters.ConverterUtils.DataSource;
+import weka.filters.supervised.instance.Resample;
 
 import java.io.FileInputStream;
 import java.util.Random;
@@ -45,6 +47,28 @@ public class WekaAccessor {
         data.deleteAttributeAt(position);
     }
 
+    public void supervisedResample() {
+        Resample resample = new Resample();
+        resample.setRandomSeed((int)System.currentTimeMillis());
+        try {
+            resample.setInputFormat(data);
+            data = Resample.useFilter(data, resample);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void unsupervisedResample() {
+        weka.filters.unsupervised.instance.Resample resample = new weka.filters.unsupervised.instance.Resample();
+        resample.setRandomSeed((int)System.currentTimeMillis());
+        try {
+            resample.setInputFormat(data);
+            data = weka.filters.unsupervised.instance.Resample.useFilter(data, resample);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void buildNaiveBayesClassifier() {
         classifier = (Classifier)new NaiveBayes();
         try {
@@ -60,6 +84,16 @@ public class WekaAccessor {
             classifier.buildClassifier(data);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public double[] test(Instances testSet) {
+        try {
+            evaluation = new Evaluation(data);
+            return evaluation.evaluateModel(classifier, testSet);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -106,6 +140,16 @@ public class WekaAccessor {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public double classify(Instance instance) {
+        double ret = -1.0f;
+        try {
+            ret = classifier.classifyInstance(instance);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 
 }

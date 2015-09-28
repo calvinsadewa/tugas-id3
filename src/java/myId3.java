@@ -168,7 +168,7 @@ public class myId3
         double[] infoGains = new double[attributes.size()];
         for (int i = 0; i < attributes.size(); i++) {
             Attribute att = attributes.get(i);
-            infoGains[att.index()] = computeInfoGain(data, att);
+            infoGains[i] = computeInfoGain(data, att);
         }
         m_Attribute = attributes.get(Utils.maxIndex(infoGains));
 
@@ -190,8 +190,7 @@ public class myId3
      * @return the classification
      * @throws NoSupportForMissingValuesException if instance has missing values
      */
-    public double classifyInstance(Instance instance)
-            throws NoSupportForMissingValuesException {
+    public double classifyInstance(Instance instance){
 
         //if leaf
         if (m_Attribute == null) {

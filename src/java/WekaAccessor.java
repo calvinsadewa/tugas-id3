@@ -28,13 +28,13 @@ public class WekaAccessor {
 
     public void loadData(String path) {
         DataSource source = null;
-        Instances data = null;
+        data = null;
         try {
             //source = new DataSource("C:\\Users\\user\\Desktop\\weka-3-6-13\\data\\weather.nominal.arff");
             source = new DataSource(path);
             data = source.getDataSet();
             data.setClassIndex(data.numAttributes()-1);
-            System.out.println(data.classAttribute());
+            //System.out.println(data.classAttribute());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -80,6 +80,15 @@ public class WekaAccessor {
 
     public void buildDTClassifier() {
         classifier = (Classifier)new ADTree();
+        try {
+            classifier.buildClassifier(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void buildMyID3Classifier() {
+        classifier = (Classifier)new myId3();
         try {
             classifier.buildClassifier(data);
         } catch (Exception e) {

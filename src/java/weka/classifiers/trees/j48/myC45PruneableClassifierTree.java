@@ -28,7 +28,7 @@ public class myC45PruneableClassifierTree
 
     /**
      * Constructor for pruneable tree structure. Stores reference
-     * to associated training data at each node.
+     * to associated training trainData at each node.
      *
      * @param toSelectLocModel selection method for local splitting model
      * @param pruneTree true if the tree is to be pruned
@@ -54,12 +54,12 @@ public class myC45PruneableClassifierTree
     /**
      * Method for building a pruneable classifier tree.
      *
-     * @param data the data for building the tree
+     * @param data the trainData for building the tree
      * @throws Exception if something goes wrong
      */
     public void buildClassifier(Instances data) throws Exception {
 
-        // can classifier tree handle the data?
+        // can classifier tree handle the trainData?
         getCapabilities().testWithFail(data);
 
         // remove instances with missing class
@@ -87,18 +87,21 @@ public class myC45PruneableClassifierTree
 
         // If critical value do not reach threshold
         if (infoGain < m_CF) {
-            boolean pruneable = true;
-            //Check child
-            // Prune all subtrees.
-            Instances[] datas = m_localModel.split(data);
-            for (i=0;i<m_sons.length;i++)
-                pruneable = pruneable && son(i).prune(datas[i]);
+            if (!m_isLeaf) {
+                boolean pruneable = true;
+                //Check child
+                // Prune all subtrees.
+                Instances[] datas = m_localModel.split(data);
+                for (i = 0; i < m_sons.length; i++)
+                    pruneable = pruneable && son(i).prune(datas[i]);
 
-            if (pruneable == true) {
-                m_isLeaf = true;
-                m_sons = null;
-                return true;
+                if (pruneable == true) {
+                    m_isLeaf = true;
+                    m_sons = null;
+                    return true;
+                }
             }
+            else return true;
         }
         return false;
     }
@@ -106,7 +109,7 @@ public class myC45PruneableClassifierTree
     /**
      * Returns a newly created tree.
      *
-     * @param data the data to work with
+     * @param data the trainData to work with
      * @return the new tree
      * @throws Exception if something goes wrong
      */
@@ -115,7 +118,7 @@ public class myC45PruneableClassifierTree
         myC45PruneableClassifierTree newTree =
                 new myC45PruneableClassifierTree(m_toSelectModel, m_pruneTheTree, m_CF,
                         m_subtreeRaising, m_cleanup);
-        newTree.buildTree((Instances)data, m_subtreeRaising || !m_cleanup);
+        newTree.buildTree((Instances) data, m_subtreeRaising || !m_cleanup);
 
         return newTree;
     }
@@ -141,8 +144,8 @@ public class myC45PruneableClassifierTree
     /**
      * Computes information gain for current tree
      *
-     * @param data the data for which info gain is to be computed
-     * @return the information gain for the current tree and data
+     * @param data the trainData for which info gain is to be computed
+     * @return the information gain for the current tree and trainData
      * @throws Exception if computation fails
      */
     private double computeInfoGain(Instances data)
@@ -163,8 +166,8 @@ public class myC45PruneableClassifierTree
     /**
      * Computes the entropy of a dataset.
      *
-     * @param data the data for which entropy is to be computed
-     * @return the entropy of the data's class distribution
+     * @param data the trainData for which entropy is to be computed
+     * @return the entropy of the trainData's class distribution
      * @throws Exception if computation fails
      */
     private double computeEntropy(Instances data) throws Exception {

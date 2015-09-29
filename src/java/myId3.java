@@ -1,24 +1,16 @@
 import weka.classifiers.Classifier;
-import weka.classifiers.Sourcable;
 import weka.core.Attribute;
-import weka.core.Capabilities;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.NoSupportForMissingValuesException;
-import weka.core.RevisionUtils;
-import weka.core.TechnicalInformation;
-import weka.core.TechnicalInformationHandler;
 import weka.core.Utils;
-import weka.core.Capabilities.Capability;
-import weka.core.TechnicalInformation.Field;
-import weka.core.TechnicalInformation.Type;
 
 import java.util.ArrayList;
 import java.util.Enumeration;
 
 /**
  * Modified weka's ID3
- * the stop condition on building tree is when no more attribute can be split or the enthropy of data is 0
+ * the stop condition on building tree is when no more attribute can be split or the enthropy of trainData is 0
  * rather than when max info gain of all attribute is zero as in weka's
  * Also can classify instance that missing attribute by checking the distribution
  * of the best match tree,
@@ -44,12 +36,12 @@ public class myId3
     /**
      * Builds Id3 decision tree classifier.
      *
-     * @param data the training data
+     * @param data the training trainData
      * @exception Exception if classifier can't be built successfully
      */
     public void buildClassifier(Instances data) throws Exception {
 
-        // can classifier handle the data?
+        // can classifier handle the trainData?
         getCapabilities().testWithFail(data);
 
         // remove instances with missing class
@@ -66,7 +58,7 @@ public class myId3
     /**
      * Method for building an Id3 tree.
      *
-     * @param data the training data
+     * @param data the training trainData
      * @param attributes the list of attribute that can be selected to make tree
      * @param parentClassValue the parent class value
      * @param classAttribute the attribute to be classified
@@ -93,7 +85,7 @@ public class myId3
         }
         m_ClassValue = Utils.maxIndex(m_Distribution);
 
-        // if data is "pure" (entrophy equal 0) or no attribute left
+        // if trainData is "pure" (entrophy equal 0) or no attribute left
         if (m_Distribution[Utils.maxIndex(m_Distribution)] == data.numInstances()
                 || attributes.size() == 0 ){
             Utils.normalize(m_Distribution);
@@ -147,9 +139,9 @@ public class myId3
     /**
      * Computes information gain for an attribute.
      *
-     * @param data the data for which info gain is to be computed
+     * @param data the trainData for which info gain is to be computed
      * @param att the attribute
-     * @return the information gain for the given attribute and data
+     * @return the information gain for the given attribute and trainData
      * @throws Exception if computation fails
      */
     private double computeInfoGain(Instances data, Attribute att)
@@ -170,8 +162,8 @@ public class myId3
     /**
      * Computes the entropy of a dataset.
      *
-     * @param data the data for which entropy is to be computed
-     * @return the entropy of the data's class distribution
+     * @param data the trainData for which entropy is to be computed
+     * @return the entropy of the trainData's class distribution
      * @throws Exception if computation fails
      */
     private double computeEntropy(Instances data) throws Exception {
@@ -195,7 +187,7 @@ public class myId3
     /**
      * Splits a dataset according to the values of a nominal attribute.
      *
-     * @param data the data which is to be split
+     * @param data the trainData which is to be split
      * @param att the attribute to be used for splitting
      * @return the sets of instances produced by the split
      */

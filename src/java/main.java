@@ -7,9 +7,9 @@ public class main {
     public static void main(String[] args) throws Exception{
         float cf = 0.5f;
         WekaAccessor wa = new WekaAccessor();
-        wa.loadData("C:\\Users\\user\\Desktop\\weka-3-6-13\\data\\weather.numeric.arff");
+        wa.loadData("D:\\Program Files (x86)\\Weka-3-6\\data\\breast-cancer.arff");
         wa.supervisedResample();
-        wa.classifier = new continuousMyId3();
+        wa.classifier = new myJ48(cf);
         wa.classifier.buildClassifier(wa.data);
         double[] hasil = wa.test(wa.data);
         System.out.println(wa.evaluation.toSummaryString());

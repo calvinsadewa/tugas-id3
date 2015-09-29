@@ -96,6 +96,7 @@ public class myC45PruneableClassifierTree
 
             if (pruneable == true) {
                 m_isLeaf = true;
+                m_sons = null;
                 return true;
             }
         }

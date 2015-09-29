@@ -17,18 +17,14 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 
 /**
- * Modificated weka's ID3
- * the stop condition on building tree is when no more attribute can be split
- * rather than when max info gain of all attribute is zero
+ * Modified weka's ID3
+ * the stop condition on building tree is when no more attribute can be split or the enthropy of data is 0
+ * rather than when max info gain of all attribute is zero as in weka's
  * Also can classify instance that missing attribute by checking the distribution
  * of the best match tree,
  */
 public class myId3
-        extends Classifier
-        implements TechnicalInformationHandler, Sourcable {
-
-    /** for serialization */
-    static final long serialVersionUID = -2693678647096322561L;
+        extends Classifier {
 
     /** The node's successors. */
     private myId3[] m_Successors;
@@ -44,63 +40,6 @@ public class myId3
 
     /** Class attribute of dataset. */
     private Attribute m_ClassAttribute;
-
-    /**
-     * Returns a string describing the classifier.
-     * @return a description suitable for the GUI.
-     */
-    public String globalInfo() {
-
-        return  "Class for constructing an unpruned decision tree based on the ID3 "
-                + "algorithm. Can only deal with nominal attributes. No missing values "
-                + "allowed. Empty leaves may result in unclassified instances. For more "
-                + "information see: \n\n"
-                + getTechnicalInformation().toString();
-    }
-
-    /**
-     * Returns an instance of a TechnicalInformation object, containing
-     * detailed information about the technical background of this class,
-     * e.g., paper reference or book this class is based on.
-     *
-     * @return the technical information about this class
-     */
-    public TechnicalInformation getTechnicalInformation() {
-        TechnicalInformation 	result;
-
-        result = new TechnicalInformation(Type.ARTICLE);
-        result.setValue(Field.AUTHOR, "R. Quinlan");
-        result.setValue(Field.YEAR, "1986");
-        result.setValue(Field.TITLE, "Induction of decision trees");
-        result.setValue(Field.JOURNAL, "Machine Learning");
-        result.setValue(Field.VOLUME, "1");
-        result.setValue(Field.NUMBER, "1");
-        result.setValue(Field.PAGES, "81-106");
-
-        return result;
-    }
-
-    /**
-     * Returns default capabilities of the classifier.
-     *
-     * @return      the capabilities of this classifier
-     */
-    public Capabilities getCapabilities() {
-        Capabilities result = super.getCapabilities();
-        result.disableAll();
-
-        // attributes
-        result.enable(Capability.NOMINAL_ATTRIBUTES);
-
-        // class
-        result.enable(Capability.NOMINAL_CLASS);
-        result.enable(Capability.MISSING_CLASS_VALUES);
-
-        // instances
-        result.setMinimumNumberInstances(0);
-
-        return result;
-    }
 
     /**
      * Builds Id3 decision tree classifier.
@@ -206,40 +145,6 @@ public class myId3
     }
 
     /**
-     * Computes class distribution for instance using decision tree.
-     *
-     * @param instance the instance for which distribution is to be computed
-     * @return the class distribution for the given instance
-     * @throws NoSupportForMissingValuesException if instance has missing values
-     */
-    public double[] distributionForInstance(Instance instance)
-            throws NoSupportForMissingValuesException {
-
-        if (m_Attribute == null) {
-            return m_Distribution;
-        } else if (instance.isMissing(m_Attribute)) {
-            //if missing attribute supossed to used
-            return m_Distribution;
-        } else {
-            return m_Successors[(int) instance.value(m_Attribute)].
-                    distributionForInstance(instance);
-        }
-    }
-
-    /**
-     * Prints the decision tree using the private toString method from below.
-     *
-     * @return a textual description of the classifier
-     */
-    public String toString() {
-
-        if ((m_Distribution == null) && (m_Successors == null)) {
-            return "Id3: No model built yet.";
-        }
-        return "Id3\n\n" + toString(0);
-    }
-
-    /**
      * Computes information gain for an attribute.
      *
      * @param data the data for which info gain is to be computed
@@ -338,131 +243,6 @@ public class myId3
             }
         }
         return text.toString();
-    }
-
-    /**
-     * Adds this tree recursively to the buffer.
-     *
-     * @param id          the unqiue id for the method
-     * @param buffer      the buffer to add the source code to
-     * @return            the last ID being used
-     * @throws Exception  if something goes wrong
-     */
-    protected int toSource(int id, StringBuffer buffer) throws Exception {
-        int                 result;
-        int                 i;
-        int                 newID;
-        StringBuffer[]      subBuffers;
-
-        buffer.append("\n");
-        buffer.append("  protected static double node" + id + "(Object[] i) {\n");
-
-        // leaf?
-        if (m_Attribute == null) {
-            result = id;
-            if (Double.isNaN(m_ClassValue)) {
-                buffer.append("    return Double.NaN;");
-            } else {
-                buffer.append("    return " + m_ClassValue + ";");
-            }
-            if (m_ClassAttribute != null) {
-                buffer.append(" // " + m_ClassAttribute.value((int) m_ClassValue));
-            }
-            buffer.append("\n");
-            buffer.append("  }\n");
-        } else {
-            buffer.append("    checkMissing(i, " + m_Attribute.index() + ");\n\n");
-            buffer.append("    // " + m_Attribute.name() + "\n");
-
-            // subtree calls
-            subBuffers = new StringBuffer[m_Attribute.numValues()];
-            newID = id;
-            for (i = 0; i < m_Attribute.numValues(); i++) {
-                newID++;
-
-                buffer.append("    ");
-                if (i > 0) {
-                    buffer.append("else ");
-                }
-                buffer.append("if (((String) i[" + m_Attribute.index()
-                        + "]).equals(\"" + m_Attribute.value(i) + "\"))\n");
-                buffer.append("      return node" + newID + "(i);\n");
-
-                subBuffers[i] = new StringBuffer();
-                newID = m_Successors[i].toSource(newID, subBuffers[i]);
-            }
-            buffer.append("    else\n");
-            buffer.append("      throw new IllegalArgumentException(\"Value '\" + i["
-                    + m_Attribute.index() + "] + \"' is not allowed!\");\n");
-            buffer.append("  }\n");
-
-            // output subtree code
-            for (i = 0; i < m_Attribute.numValues(); i++) {
-                buffer.append(subBuffers[i].toString());
-            }
-            subBuffers = null;
-
-            result = newID;
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns a string that describes the classifier as source. The
-     * classifier will be contained in a class with the given name (there may
-     * be auxiliary classes),
-     * and will contain a method with the signature:
-     * <pre><code>
-     * public static double classify(Object[] i);
-     * </code></pre>
-     * where the array <code>i</code> contains elements that are either
-     * Double, String, with missing values represented as null. The generated
-     * code is public domain and comes with no warranty. <br/>
-     * Note: works only if class attribute is the last attribute in the dataset.
-     *
-     * @param className the name that should be given to the source class.
-     * @return the object source described by a string
-     * @throws Exception if the source can't be computed
-     */
-    public String toSource(String className) throws Exception {
-        StringBuffer        result;
-        int                 id;
-
-        result = new StringBuffer();
-
-        result.append("class " + className + " {\n");
-        result.append("  private static void checkMissing(Object[] i, int index) {\n");
-        result.append("    if (i[index] == null)\n");
-        result.append("      throw new IllegalArgumentException(\"Null values "
-                + "are not allowed!\");\n");
-        result.append("  }\n\n");
-        result.append("  public static double classify(Object[] i) {\n");
-        id = 0;
-        result.append("    return node" + id + "(i);\n");
-        result.append("  }\n");
-        toSource(id, result);
-        result.append("}\n");
-
-        return result.toString();
-    }
-
-    /**
-     * Returns the revision string.
-     *
-     * @return		the revision
-     */
-    public String getRevision() {
-        return RevisionUtils.extract("$Revision: 6404 $");
-    }
-
-    /**
-     * Main method.
-     *
-     * @param args the options for the classifier
-     */
-    public static void main(String[] args) {
-        runClassifier(new myId3(), args);
     }
 }
 

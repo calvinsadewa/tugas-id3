@@ -6,18 +6,13 @@ import weka.core.Capabilities.Capability;
 import java.util.Enumeration;
 
 /**
- * Class for handling a tree structure that can
- * be pruned using C4.5 procedures.
+ * Modified weka's C45PruneableClassifierTree
  *
- * @author Eibe Frank (eibe@cs.waikato.ac.nz)
- * @version $Revision: 8986 $
+ * Use critical value factor pruning rather than reduced error pruning
  */
 
 public class myC45PruneableClassifierTree
         extends ClassifierTree {
-
-    /** for serialization */
-    static final long serialVersionUID = -4813820170260388194L;
 
     /** True if the tree is to be pruned. */
     boolean m_pruneTheTree = false;
@@ -57,31 +52,6 @@ public class myC45PruneableClassifierTree
     }
 
     /**
-     * Returns default capabilities of the classifier tree.
-     *
-     * @return      the capabilities of this classifier tree
-     */
-    public Capabilities getCapabilities() {
-        Capabilities result = super.getCapabilities();
-        result.disableAll();
-
-        // attributes
-        result.enable(Capability.NOMINAL_ATTRIBUTES);
-        result.enable(Capability.NUMERIC_ATTRIBUTES);
-        result.enable(Capability.DATE_ATTRIBUTES);
-        result.enable(Capability.MISSING_VALUES);
-
-        // class
-        result.enable(Capability.NOMINAL_CLASS);
-        result.enable(Capability.MISSING_CLASS_VALUES);
-
-        // instances
-        result.setMinimumNumberInstances(0);
-
-        return result;
-    }
-
-    /**
      * Method for building a pruneable classifier tree.
      *
      * @param data the data for building the tree
@@ -97,7 +67,6 @@ public class myC45PruneableClassifierTree
         data.deleteWithMissingClass();
 
         buildTree(data, m_subtreeRaising || !m_cleanup);
-        collapse();
         if (m_pruneTheTree) {
             prune(data);
         }
@@ -107,33 +76,8 @@ public class myC45PruneableClassifierTree
     }
 
     /**
-     * Collapses a tree to a node if training error doesn't increase.
-     */
-    public final void collapse(){
-
-        double errorsOfSubtree;
-        double errorsOfTree;
-        int i;
-
-        if (!m_isLeaf){
-            errorsOfSubtree = getTrainingErrors();
-            errorsOfTree = localModel().distribution().numIncorrect();
-            if (errorsOfSubtree >= errorsOfTree-1E-3){
-
-                // Free adjacent trees
-                m_sons = null;
-                m_isLeaf = true;
-
-                // Get NoSplit Model for tree.
-                m_localModel = new NoSplit(localModel().distribution());
-            }else
-                for (i=0;i<m_sons.length;i++)
-                    son(i).collapse();
-        }
-    }
-
-    /**
-     * Prunes a tree using C4.5's pruning procedure.
+     * Prunes a tree using critical value factor as in (Mingers, 1987).
+     * The critical value used is info gain.
      *
      * @throws Exception if something goes wrong
      */
@@ -141,6 +85,7 @@ public class myC45PruneableClassifierTree
         int i;
         double infoGain = computeInfoGain(data);
 
+        // If critical value do not reach threshold
         if (infoGain < m_CF) {
             boolean pruneable = true;
             //Check child
@@ -175,89 +120,6 @@ public class myC45PruneableClassifierTree
     }
 
     /**
-     * Computes estimated errors for tree.
-     *
-     * @return the estimated errors
-     */
-    private double getEstimatedErrors(){
-
-        double errors = 0;
-        int i;
-
-        if (m_isLeaf)
-            return getEstimatedErrorsForDistribution(localModel().distribution());
-        else{
-            for (i=0;i<m_sons.length;i++)
-                errors = errors+son(i).getEstimatedErrors();
-            return errors;
-        }
-    }
-
-    /**
-     * Computes estimated errors for one branch.
-     *
-     * @param data the data to work with
-     * @return the estimated errors
-     * @throws Exception if something goes wrong
-     */
-    private double getEstimatedErrorsForBranch(Instances data)
-            throws Exception {
-
-        Instances [] localInstances;
-        double errors = 0;
-        int i;
-
-        if (m_isLeaf)
-            return getEstimatedErrorsForDistribution(new Distribution(data));
-        else{
-            Distribution savedDist = localModel().m_distribution;
-            localModel().resetDistribution(data);
-            localInstances = (Instances[])localModel().split(data);
-            localModel().m_distribution = savedDist;
-            for (i=0;i<m_sons.length;i++)
-                errors = errors+
-                        son(i).getEstimatedErrorsForBranch(localInstances[i]);
-            return errors;
-        }
-    }
-
-    /**
-     * Computes estimated errors for leaf.
-     *
-     * @param theDistribution the distribution to use
-     * @return the estimated errors
-     */
-    private double getEstimatedErrorsForDistribution(Distribution
-                                                             theDistribution){
-
-        if (Utils.eq(theDistribution.total(),0))
-            return 0;
-        else
-            return theDistribution.numIncorrect()+
-                    Stats.addErrs(theDistribution.total(),
-                            theDistribution.numIncorrect(), m_CF);
-    }
-
-    /**
-     * Computes errors of tree on training data.
-     *
-     * @return the training errors
-     */
-    private double getTrainingErrors(){
-
-        double errors = 0;
-        int i;
-
-        if (m_isLeaf)
-            return localModel().distribution().numIncorrect();
-        else{
-            for (i=0;i<m_sons.length;i++)
-                errors = errors+son(i).getTrainingErrors();
-            return errors;
-        }
-    }
-
-    /**
      * Method just exists to make program easier to read.
      *
      * @return the local split model
@@ -265,33 +127,6 @@ public class myC45PruneableClassifierTree
     private ClassifierSplitModel localModel(){
 
         return (ClassifierSplitModel)m_localModel;
-    }
-
-    /**
-     * Computes new distributions of instances for nodes
-     * in tree.
-     *
-     * @param data the data to compute the distributions for
-     * @throws Exception if something goes wrong
-     */
-    private void newDistribution(Instances data) throws Exception {
-
-        Instances [] localInstances;
-
-        localModel().resetDistribution(data);
-        m_train = data;
-        if (!m_isLeaf){
-            localInstances =
-                    (Instances [])localModel().split(data);
-            for (int i = 0; i < m_sons.length; i++)
-                son(i).newDistribution(localInstances[i]);
-        } else {
-
-            // Check whether there are some instances at the leaf now!
-            if (!Utils.eq(data.sumOfWeights(), 0)) {
-                m_isEmpty = false;
-            }
-        }
     }
 
     /**
@@ -303,19 +138,10 @@ public class myC45PruneableClassifierTree
     }
 
     /**
-     * Returns the revision string.
-     *
-     * @return		the revision
-     */
-    public String getRevision() {
-        return RevisionUtils.extract("$Revision: 8986 $");
-    }
-
-    /**
-     * Computes information gain for an attribute.
+     * Computes information gain for current tree
      *
      * @param data the data for which info gain is to be computed
-     * @return the information gain for the given attribute and data
+     * @return the information gain for the current tree and data
      * @throws Exception if computation fails
      */
     private double computeInfoGain(Instances data)

@@ -12,7 +12,7 @@ public class myJ48 extends Classifier{
     float crit_val = 0;
 
     public myJ48(float critical_value) {
-        crit_val = 0;
+        crit_val = critical_value;
     }
 
     @Override
